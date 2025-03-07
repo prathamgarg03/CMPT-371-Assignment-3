@@ -1,0 +1,18 @@
+{
+  "name": "assignment3",
+  "version": "1.0.0",
+  "description": "CMPT 371 - Assignment 3",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "tcp-server": "node src/tcp-server.js",
+    "tcp-client-single": "node src/tcp-client.js single",
+    "tcp-client-multiple": "node src/tcp-client.js multiple",
+    "udp-server": "node src/udp-server.js",
+    "udp-client-single": "node src/udp-client.js single",
+    "udp-client-multiple": "node src/udp-client.js multiple"
+  },
+  "keywords": [],
+  "author": "Pratham Garg",
+  "license": "ISC"
+}
