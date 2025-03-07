@@ -4,49 +4,54 @@ const UDP_PORT = 53444
 const UDP_HOST = "localhost"
 
 const sendSingleMessage = () => {
-    const UdpClient = createSocket("udp4")
-    const startTimestamp = Date.now()
+    return new Promise((resolve, reject) => {
+        const UdpClient = createSocket("udp4")
+        let RTT = 0
+        const startTimestamp = Date.now()
 
-    sendMessage(UdpClient)
+        sendMessage(UdpClient)
 
-    UdpClient.on("message", (msg, rInfo) => {
-        const endTimestamp = Date.now()
-        const RTT = endTimestamp - startTimestamp
-        console.log("Message received from UDP server:", {msg: msg.toString()})
-        console.log("Round trip time:", RTT, " ms")
-        UdpClient.close()
-    })
+        UdpClient.on("message", (msg, rInfo) => {
+            const endTimestamp = Date.now()
+            RTT = endTimestamp - startTimestamp
+            UdpClient.close()
+            resolve(RTT)
+        })
 
-    UdpClient.on('error', (err) => {
-        console.error('Error:', err);
-        UdpClient.close();
+        UdpClient.on('error', (err) => {
+            console.error('Error:', err)
+            UdpClient.close()
+            reject(err)
+        })
     })
 }
 
 const sendMultipleMessages = () => {
-    const UdpClient = createSocket("udp4")
-    let messageCount = 0
-    const startTimestamp = Date.now()
+    return new Promise((resolve, reject) => {
+        const UdpClient = createSocket("udp4")
+        let messageCount = 0
+        let RTT = 0
+        const startTimestamp = Date.now()
 
-    sendMessage(UdpClient)
+        sendMessage(UdpClient)
 
-    UdpClient.on("message", (msg, rInfo) => {
-        messageCount++
-        if(messageCount < 1000) {
-            sendMessage(UdpClient)
-        } else {
-            const endTimestamp = Date.now()
-            const RTT = endTimestamp - startTimestamp
-            console.log("Messages sent:", messageCount)
-            console.log({data: msg.toString()})
-            console.log("Round trip time:", RTT, " ms")
+        UdpClient.on("message", (msg, rInfo) => {
+            messageCount++
+            if (messageCount < 1000) {
+                sendMessage(UdpClient)
+            } else {
+                const endTimestamp = Date.now()
+                RTT = endTimestamp - startTimestamp
+                UdpClient.close()
+                resolve(RTT)
+            }
+        })
+
+        UdpClient.on('error', (err) => {
+            console.error('Error:', err)
             UdpClient.close()
-        }
-    })
-
-    UdpClient.on('error', (err) => {
-        console.error('Error:', err);
-        UdpClient.close();
+            reject(err)
+        })
     })
 }
 
@@ -60,9 +65,35 @@ const sendMessage = (UdpClient) => {
 }
 
 if (process.argv[2] === "single") {
-    sendSingleMessage()
+    const RTT = []
+    const calculateAverageRTT = async () => {
+        for (let i = 0; i < 10; i++) {
+            try {
+                const rtt = await sendSingleMessage()
+                RTT.push(rtt)
+            } catch (error) {
+                console.log("Error:", error)
+            }
+        }
+        const averageRTT = RTT.reduce((a, b) => a + b) / RTT.length
+        console.log("Average RTT:", averageRTT, " ms")
+    }
+    await calculateAverageRTT()
 } else if (process.argv[2] === "multiple") {
-    sendMultipleMessages()
+    const RTT = []
+    const calculateAverageRTT = async () => {
+        for (let i = 0; i < 10; i++) {
+            try {
+                const rtt = await sendMultipleMessages()
+                RTT.push(rtt)
+            } catch (error) {
+                console.log("Error:", error)
+            }
+        }
+        const averageRTT = RTT.reduce((a, b) => a + b) / RTT.length
+        console.log("Average RTT:", averageRTT, " ms")
+    }
+    await calculateAverageRTT()
 } else {
-    console.log("Invalid argument")
+    console.log("Invalid argument. Please use 'single' or 'multiple'")
 }

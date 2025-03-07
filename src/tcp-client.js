@@ -4,52 +4,59 @@ const TCP_PORT = 53333
 const TCP_HOST = "localhost"
 
 const sendSingleMessage = () => {
-    const TcpClient = new Socket()
+    return new Promise((resolve, reject) => {
+        const TcpClient = new Socket()
+        let RTT = 0
+        TcpClient.connect(TCP_PORT, TCP_HOST, () => {
+            const startTimestamp = Date.now()
 
-    TcpClient.connect(TCP_PORT, TCP_HOST, () => {
-        console.log("Connected to TCP server")
-        const startTimestamp = Date.now()
+            sendMessage(TcpClient)
 
-        sendMessage(TcpClient)
+            TcpClient.on("data", (data) => {
+                const endTimestamp = Date.now()
+                RTT = endTimestamp - startTimestamp
+                // console.log({data: data.toString()})
+                // console.log("Round trip time:", RTT, " ms")
+                TcpClient.end()
+                resolve(RTT)
+            })
 
-        TcpClient.on("data", (data) => {
-            const endTimestamp = Date.now()
-            const RTT = endTimestamp - startTimestamp
-            console.log("Data received from TCP server:", {data: data.toString()})
-            console.log("Round trip time:", RTT, " ms")
-            TcpClient.end()
-        })
-
-        TcpClient.on("error", (error) => {
-            console.log("TCP client error:", {error})
+            TcpClient.on("error", (error) => {
+                console.log("TCP client error:", {error})
+                reject(error)
+            })
         })
     })
 }
 
 const sendMultipleMessages = () => {
-    const TcpClient = new Socket()
-    let messageCount = 0
-    TcpClient.connect(TCP_PORT, TCP_HOST, () => {
-        console.log("Connected to TCP server")
-        const startTimestamp = Date.now()
-        sendMessage(TcpClient)
+    return new Promise((resolve, reject) => {
+        const TcpClient = new Socket()
+        let messageCount = 0
+        let RTT = 0
+        TcpClient.connect(TCP_PORT, TCP_HOST, () => {
+            const startTimestamp = Date.now()
+            sendMessage(TcpClient)
 
-        TcpClient.on("data", (data) => {
-            messageCount++;
-            if(messageCount < 1000) {
-                sendMessage(TcpClient)
-            } else {
-                const endTimestamp = Date.now()
-                const RTT = endTimestamp - startTimestamp
-                console.log("Messages sent:", messageCount)
-                console.log({data: data.toString()})
-                console.log("Round trip time:", RTT, " ms")
-                TcpClient.end()
-            }
-        })
+            TcpClient.on("data", (data) => {
+                messageCount++;
+                if (messageCount < 1000) {
+                    sendMessage(TcpClient)
+                } else {
+                    const endTimestamp = Date.now()
+                    RTT = endTimestamp - startTimestamp
+                    // console.log("Messages sent:", messageCount)
+                    // console.log({data: data.toString()})
+                    // console.log("Round trip time:", RTT, " ms")
+                    TcpClient.end()
+                    resolve(RTT)
+                }
+            })
 
-        TcpClient.on("error", (error) => {
-            console.log("TCP client error:", {error})
+            TcpClient.on("error", (error) => {
+                console.log("TCP client error:", {error})
+                reject(error)
+            })
         })
     })
 }
@@ -59,9 +66,35 @@ const sendMessage = (TcpClient) => {
 }
 
 if (process.argv[2] === "single") {
-    sendSingleMessage()
+    const RTT = []
+    const calculateAverageRTT = async () => {
+        for (let i = 0; i < 10; i++) {
+            try {
+                const rtt = await sendSingleMessage()
+                RTT.push(rtt)
+            } catch (error) {
+                console.log("Error:", error)
+            }
+        }
+        const averageRTT = RTT.reduce((a, b) => a + b) / RTT.length
+        console.log("Average RTT:", averageRTT, " ms")
+    }
+    await calculateAverageRTT()
 } else if (process.argv[2] === "multiple") {
-    sendMultipleMessages()
+    const RTT = []
+    const calculateAverageRTT = async () => {
+        for (let i = 0; i < 10; i++) {
+            try {
+                const rtt = await sendMultipleMessages()
+                RTT.push(rtt)
+            } catch (error) {
+                console.log("Error:", error)
+            }
+        }
+        const averageRTT = RTT.reduce((a, b) => a + b) / RTT.length
+        console.log("Average RTT:", averageRTT, " ms")
+    }
+    await calculateAverageRTT()
 } else {
     console.log("Invalid argument. Please use 'single' or 'multiple'")
 }
